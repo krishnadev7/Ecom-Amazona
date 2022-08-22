@@ -17,7 +17,7 @@ function App() {
           </Container>
         </Navbar>
         <main>
-          <Container>
+          <Container className='pt-3'>
             <Routes>
               <Route path='/product/:slug' element={<ProductScreen />} />
               <Route path='/' element={<HomeScreen />} />
