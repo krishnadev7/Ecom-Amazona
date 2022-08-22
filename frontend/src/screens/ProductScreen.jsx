@@ -9,6 +9,8 @@ import Card from 'react-bootstrap/Card'
 import Rating from '../components/Rating';
 import Button from 'react-bootstrap/esm/Button';
 import { Helmet } from 'react-helmet-async';
+import LoadingBox from '../components/LoadingBox';
+import MessageBox from '../components/MessageBox';
 
 
 
@@ -45,15 +47,15 @@ function ProductScreen() {
         const result = await axios.get(`/api/products/slug/${slug}`);
         dispatch({ type: 'Fetch_Success', payload: result.data });
       } catch (err) {
-        dispatch({ type: 'Fetch_Fail', payload: err.message });
+        dispatch({ type: 'Fetch_Fail', payload: getError(err)});
       }
     };
     fetchData();
   }, [slug]);
   return loading ? (
-    <div>Loading...</div>
+    <LoadingBox />
   ) : error ? (
-    <div>{error}</div>
+    <MessageBox variant='danger'>{error}</MessageBox>
   ) : (
     <div>
       <Row>
@@ -68,9 +70,7 @@ function ProductScreen() {
           <ListGroup variant='flush'>
             <ListGroup.Item>
               <Helmet>
-                <title>
-                  {product.name}
-                </title>
+                <title>{product.name}</title>
               </Helmet>
               <h1>{product.name}</h1>
             </ListGroup.Item>
