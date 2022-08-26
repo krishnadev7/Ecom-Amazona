@@ -1,9 +1,10 @@
 import  express from "express";
-import data from "./data.js";
 import dotenv from 'dotenv';
 import mongoose from "mongoose";
+import seedRouter from "./routes/seedRoutes.js";
+import ProductRouter from "./routes/productRoutes.js";
 
-const app = express();
+
 const PORT = process.env.PORT || 5000;
 dotenv.config();
 
@@ -12,27 +13,11 @@ mongoose.connect(process.env.MongoURI).then(()=> {
 }).catch(err => {
     console.log(err.message);
 })
+const app = express();
 
-app.get('/api/products', (req,res) => {
-    res.send(data.products);
-})
+app.use('/api/seed', seedRouter)
+app.use('/api/products', ProductRouter)
 
-app.get('/api/products/slug/:slug',(req,res)=>{
-    const product = data.products.find(x => x.slug === req.params.slug);
-    if(product){
-        res.send(product);
-    }else{
-        res.status(404).send({message: 'Product Not Found!'})
-    }
-})
-app.get('/api/products/:id',(req,res)=>{
-    const product = data.products.find(x => x._id === req.params.id);
-    if(product){
-        res.send(product);
-    }else{
-        res.status(404).send({message: 'Product Not Found!'})
-    }
-})
 
 app.listen(PORT,() => {
     console.log(`Server up and running on port ${PORT}`);
