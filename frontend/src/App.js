@@ -16,6 +16,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import ShippingAddressScreen from './screens/ShippingAddressScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import PaymentMethodScreen from './screens/PaymentMethodScreen';
+import PlaceOrderScreen from './screens/PlaceOrderScreen';
 
 function App() {
   const { state,dispatch:ctxDispatch } = useContext(Store);
@@ -30,7 +31,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className='d-flex flex-column site-container'>
-        <ToastContainer position='bottom-center' limit={1}/>
+        <ToastContainer position='bottom-center' limit={1} />
         <Navbar bg='dark' variant='dark'>
           <Container>
             <LinkContainer to='/'>
@@ -58,7 +59,9 @@ function App() {
                     className='dropdown-item'
                     to='#signout'
                     onClick={signoutHandler}
-                  >Sign Out</Link>
+                  >
+                    Sign Out
+                  </Link>
                 </NavDropdown>
               ) : (
                 <Link className='nav-link' to='/signin'>
@@ -77,6 +80,7 @@ function App() {
               <Route path='/signup' element={<SignUpScreen />} />
               <Route path='/shipping' element={<ShippingAddressScreen />} />
               <Route path='/payment' element={<PaymentMethodScreen />} />
+              <Route path='/placeorder' element={<PlaceOrderScreen />} />
               <Route path='/' element={<HomeScreen />} />
             </Routes>
           </Container>
