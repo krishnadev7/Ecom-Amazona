@@ -40,6 +40,8 @@ function reducer(state, action) {
       localStorage.removeItem('cartItems', JSON.stringify(cartItems));
       return { ...state, cart: { ...state.cart, cartItems } };
     }
+    case  'Cart_Clear':
+      return {...state, cart:{...state.cart, cartItems: []}}
     case 'User_SignIn':
       return { ...state, userInfo: action.payload };
 
