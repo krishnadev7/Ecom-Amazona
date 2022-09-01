@@ -6,11 +6,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getError } from '../utils';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import {Helmet} from 'react-helmet-async'
+import { Helmet } from 'react-helmet-async';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Card from 'react-bootstrap/Card';
-import ListGroup from 'react-bootstrap/ListGroup'
+import ListGroup from 'react-bootstrap/ListGroup';
+import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
+import { toast } from 'react-toastify';
 
 const reducer = (state, action) => {
   switch (action.type) {
@@ -20,7 +22,14 @@ const reducer = (state, action) => {
       return { ...state, loading: false, order: action.payload, error: '' };
     case 'Fetch_Fail':
       return { ...state, loading: false, error: action.payload };
-
+    case 'Pay_Request':
+      return {...state, loadingPay: true};
+    case 'Pay_Success':
+      return {...state, loadingPay: false, successPay: true};
+    case 'Pay_Fail':
+      return {...state, loadingPay: false}
+    case 'Pay_Reset':
+      return {...state, loadingPay: false, successPay: false}
     default:
       return state;
   }
@@ -34,11 +43,47 @@ function OrderScreen() {
   const { id: orderId } = params;
   const navigate = useNavigate();
 
-  const [{ loading, error, order }, dispatch] = useReducer(reducer, {
+  const [{ loading, error, order, successPay,loadingPay }, dispatch] = useReducer(reducer, {
     loading: true,
     order: {},
     error: '',
+    successPay: false, loadingPay: false
   });
+
+  const [{ isPending }, paypalDispatch] = usePayPalScriptReducer();
+
+  function createOrder(data, actions) {
+    return actions.order
+      .create({ purchase_units: [{ amount: { value: order.totalPrice } }] })
+      .then(orderId => {
+        return orderId;
+      });
+  }
+
+  function onApprove(data, actions) {
+    return actions.order.capture().then(async function (details) {
+      try {
+        dispatch({ type: 'Pay_Request' });
+        const { data } = await axios.put(
+          `/api/orders/${order._id}/pay`,
+          details,
+          { headers: { authorization: `Bearer ${userInfo.token}` } }
+        );
+        dispatch({ type: 'Pay_Success', payload: data });
+        toast.success('Order is paid');
+      } catch (err) {
+        dispatch({ type: 'Pay_Fail', payload: getError(err) });
+        toast.error(getError(err));
+        console.log(err);
+      }
+    });
+  }
+
+  function onError(err) {
+    toast.error(getError(err))
+    console.log(err);
+  }
+
   useEffect(() => {
     const fetchOrder = async () => {
       try {
@@ -54,10 +99,28 @@ function OrderScreen() {
     if (!userInfo) {
       return navigate('/login');
     }
-    if (!order._id || (order._id && order._id !== orderId)) {
+    if (!order._id|| successPay || (order._id && order._id !== orderId)) {
       fetchOrder();
+      if(successPay){
+        dispatch({type: 'Pay_Reset'})
+      }
+    } else {
+      const loadPayPalScript = async () => {
+        const { data: clientId } = await axios.get('/api/keys/paypal', {
+          headers: { authorization: `Bearer ${userInfo.token}` },
+        });
+        paypalDispatch({
+          type: 'resetOptions',
+          value: {
+            'client-id': clientId,
+            currency: 'USD',
+          },
+        });
+        paypalDispatch({ type: 'setLoadingStatus', value: 'pending' });
+      };
+      loadPayPalScript();
     }
-  }, [order, userInfo, orderId, navigate]);
+  }, [order, userInfo, orderId, navigate, paypalDispatch, successPay]);
   return loading ? (
     <LoadingBox></LoadingBox>
   ) : error ? (
@@ -107,7 +170,7 @@ function OrderScreen() {
             <Card.Body>
               <Card.Title>Items</Card.Title>
               <ListGroup variant='flush'>
-                {order.orderItems.map((item) => (
+                {order.orderItems.map(item => (
                   <ListGroup.Item key={item._id}>
                     <Row className='align-items-center'>
                       <Col md={6}>
@@ -138,21 +201,43 @@ function OrderScreen() {
                 <ListGroup.Item>
                   <Row>
                     <Col>Items</Col>
-                    <Col>${order.itemsPrice.toFixed(2)}</Col>
+                    <Col>
+                      <strong>₹{order.itemsPrice.toFixed(2)}</strong>
+                    </Col>
                   </Row>
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <Row>
                     <Col>Tax</Col>
-                    <Col>${order.taxPrice.toFixed(2)}</Col>
+                    <Col>
+                      <strong>₹{order.taxPrice.toFixed(2)}</strong>
+                    </Col>
                   </Row>
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <Row>
                     <Col>Order Total</Col>
-                    <Col>${order.totalPrice.toFixed(2)}</Col>
+                    <Col>
+                      <strong>₹{order.totalPrice.toFixed(2)}</strong>
+                    </Col>
                   </Row>
                 </ListGroup.Item>
+                {!order.isPaid && (
+                  <ListGroup.Item>
+                    {isPending ? (
+                      <LoadingBox />
+                    ) : (
+                      <div>
+                        <PayPalButtons
+                          createOrder={createOrder}
+                          onApprove={onApprove}
+                          onError={onError}
+                        ></PayPalButtons>
+                      </div>
+                    )}
+                    {loadingPay && <LoadingBox></LoadingBox>}
+                  </ListGroup.Item>
+                )}
               </ListGroup>
             </Card.Body>
           </Card>
